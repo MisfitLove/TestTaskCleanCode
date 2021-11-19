@@ -1,4 +1,5 @@
-﻿using CleanArchitecture.Domain.Entities;
+﻿using System.Linq;
+using CleanArchitecture.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,6 +15,8 @@ namespace CleanArchitecture.Infrastructure.Persistence.Configurations
 
             builder
                 .OwnsOne(b => b.Colour);
+
+            builder.HasMany(x => x.Persons).WithMany(x => x.TodoLists);
         }
     }
 }

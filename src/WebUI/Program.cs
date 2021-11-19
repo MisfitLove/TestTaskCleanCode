@@ -13,7 +13,7 @@ namespace CleanArchitecture.WebUI
 {
     public class Program
     {
-        public async static Task Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var host = CreateHostBuilder(args).Build();
 
@@ -24,13 +24,13 @@ namespace CleanArchitecture.WebUI
                 try
                 {
                     var context = services.GetRequiredService<ApplicationDbContext>();
-                    context.Database.Migrate();                
+                    await context.Database.MigrateAsync();                
 
-                    var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-                    var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+                    // var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
+                    // var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
-                    await ApplicationDbContextSeed.SeedDefaultUserAsync(userManager, roleManager);
-                    await ApplicationDbContextSeed.SeedSampleDataAsync(context);
+                    // await ApplicationDbContextSeed.SeedDefaultUserAsync(userManager, roleManager);
+                    // await ApplicationDbContextSeed.SeedSampleDataAsync(context);
                 }
                 catch (Exception ex)
                 {

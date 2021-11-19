@@ -1,5 +1,5 @@
-﻿using CleanArchitecture.Domain.Common;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
+using CleanArchitecture.Domain.Common;
 
 namespace CleanArchitecture.Application.Common.Interfaces
 {

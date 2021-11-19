@@ -1,6 +1,6 @@
 ﻿using CleanArchitecture.Domain.Common;
 using CleanArchitecture.Domain.Enums;
-using CleanArchitecture.Domain.Events;
+using CleanArchitecture.Domain.Events.ToDoItems;
 using System;
 using System.Collections.Generic;
 

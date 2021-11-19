@@ -1,10 +1,10 @@
 ﻿using CleanArchitecture.Application.Common.Exceptions;
 using CleanArchitecture.Application.Common.Interfaces;
 using CleanArchitecture.Domain.Entities;
-using CleanArchitecture.Domain.Events;
 using MediatR;
 using System.Threading;
 using System.Threading.Tasks;
+using CleanArchitecture.Domain.Events.ToDoItems;
 
 namespace CleanArchitecture.Application.TodoItems.Commands.DeleteTodoItem
 {

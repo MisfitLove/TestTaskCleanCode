@@ -3,15 +3,17 @@ using System;
 using CleanArchitecture.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace CleanArchitecture.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20211119180518_AddPersons")]
+    partial class AddPersons
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -476,21 +478,6 @@ namespace CleanArchitecture.Infrastructure.Persistence.Migrations
                     b.ToTable("AspNetUserTokens");
                 });
 
-            modelBuilder.Entity("PersonTodoList", b =>
-                {
-                    b.Property<Guid>("PersonsPersonId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("TodoListsId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("PersonsPersonId", "TodoListsId");
-
-                    b.HasIndex("TodoListsId");
-
-                    b.ToTable("PersonTodoList");
-                });
-
             modelBuilder.Entity("CleanArchitecture.Domain.Entities.TodoItem", b =>
                 {
                     b.HasOne("CleanArchitecture.Domain.Entities.TodoList", "List")
@@ -581,21 +568,6 @@ namespace CleanArchitecture.Infrastructure.Persistence.Migrations
                     b.HasOne("CleanArchitecture.Infrastructure.Identity.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("PersonTodoList", b =>
-                {
-                    b.HasOne("Domain.Entities.Person", null)
-                        .WithMany()
-                        .HasForeignKey("PersonsPersonId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("CleanArchitecture.Domain.Entities.TodoList", null)
-                        .WithMany()
-                        .HasForeignKey("TodoListsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

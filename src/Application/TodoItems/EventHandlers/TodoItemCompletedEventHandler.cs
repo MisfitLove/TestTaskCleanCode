@@ -1,5 +1,5 @@
 ﻿using CleanArchitecture.Application.Common.Models;
-using CleanArchitecture.Domain.Events;
+using CleanArchitecture.Domain.Events.ToDoItems;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using System.Threading;

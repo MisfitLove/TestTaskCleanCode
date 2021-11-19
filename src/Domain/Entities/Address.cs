@@ -4,10 +4,10 @@ using CleanArchitecture.Domain.Common;
 
 namespace Domain.Entities
 {
-    public class Address : AuditableEntity, IHasDomainEvent
+    public class Address : AuditableEntity
     {
         public Guid AddressId { get; set; }
-        public Guid UserId { get; set; }
+        public Guid PersonId { get; set; }
         public string Country { get; set;}
         public string City { get; set; }
         public string PostalCode { get; set; }
@@ -15,6 +15,5 @@ namespace Domain.Entities
         public ushort StreetNumber { get; set; } 
         public ushort HouseNumber { get; set;}
         public bool IsPrimary { get; set; }
-        public List<DomainEvent> DomainEvents { get; set; } = new List<DomainEvent>();
     }
 }

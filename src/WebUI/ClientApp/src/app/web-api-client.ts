@@ -14,14 +14,15 @@ import { HttpClient, HttpHeaders, HttpResponse, HttpResponseBase } from '@angula
 
 export const API_BASE_URL = new InjectionToken<string>('API_BASE_URL');
 
-export interface IUsersClient {
-    get(): Observable<User[]>;
+export interface IPersonsClient {
+    get(personIds: string[] | null | undefined, pageNumber: number | undefined, pageSize: number | undefined): Observable<PaginatedListOfPersonDto>;
+    create(command: CreatePersonCommand): Observable<string>;
 }
 
 @Injectable({
     providedIn: 'root'
 })
-export class UsersClient implements IUsersClient {
+export class PersonsClient implements IPersonsClient {
     private http: HttpClient;
     private baseUrl: string;
     protected jsonParseReviver: ((key: string, value: any) => any) | undefined = undefined;
@@ -31,8 +32,18 @@ export class UsersClient implements IUsersClient {
         this.baseUrl = baseUrl !== undefined && baseUrl !== null ? baseUrl : "";
     }
 
-    get(): Observable<User[]> {
-        let url_ = this.baseUrl + "/api/Users";
+    get(personIds: string[] | null | undefined, pageNumber: number | undefined, pageSize: number | undefined): Observable<PaginatedListOfPersonDto> {
+        let url_ = this.baseUrl + "/api/Persons?";
+        if (personIds !== undefined && personIds !== null)
+            personIds && personIds.forEach(item => { url_ += "PersonIds=" + encodeURIComponent("" + item) + "&"; });
+        if (pageNumber === null)
+            throw new Error("The parameter 'pageNumber' cannot be null.");
+        else if (pageNumber !== undefined)
+            url_ += "PageNumber=" + encodeURIComponent("" + pageNumber) + "&";
+        if (pageSize === null)
+            throw new Error("The parameter 'pageSize' cannot be null.");
+        else if (pageSize !== undefined)
+            url_ += "PageSize=" + encodeURIComponent("" + pageSize) + "&";
         url_ = url_.replace(/[?&]$/, "");
 
         let options_ : any = {
@@ -50,14 +61,14 @@ export class UsersClient implements IUsersClient {
                 try {
                     return this.processGet(<any>response_);
                 } catch (e) {
-                    return <Observable<User[]>><any>_observableThrow(e);
+                    return <Observable<PaginatedListOfPersonDto>><any>_observableThrow(e);
                 }
             } else
-                return <Observable<User[]>><any>_observableThrow(response_);
+                return <Observable<PaginatedListOfPersonDto>><any>_observableThrow(response_);
         }));
     }
 
-    protected processGet(response: HttpResponseBase): Observable<User[]> {
+    protected processGet(response: HttpResponseBase): Observable<PaginatedListOfPersonDto> {
         const status = response.status;
         const responseBlob =
             response instanceof HttpResponse ? response.body :
@@ -68,11 +79,7 @@ export class UsersClient implements IUsersClient {
             return blobToText(responseBlob).pipe(_observableMergeMap(_responseText => {
             let result200: any = null;
             let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
-            if (Array.isArray(resultData200)) {
-                result200 = [] as any;
-                for (let item of resultData200)
-                    result200!.push(User.fromJS(item));
-            }
+            result200 = PaginatedListOfPersonDto.fromJS(resultData200);
             return _observableOf(result200);
             }));
         } else if (status !== 200 && status !== 204) {
@@ -80,7 +87,59 @@ export class UsersClient implements IUsersClient {
             return throwException("An unexpected server error occurred.", status, _responseText, _headers);
             }));
         }
-        return _observableOf<User[]>(<any>null);
+        return _observableOf<PaginatedListOfPersonDto>(<any>null);
+    }
+
+    create(command: CreatePersonCommand): Observable<string> {
+        let url_ = this.baseUrl + "/api/Persons";
+        url_ = url_.replace(/[?&]$/, "");
+
+        const content_ = JSON.stringify(command);
+
+        let options_ : any = {
+            body: content_,
+            observe: "response",
+            responseType: "blob",
+            headers: new HttpHeaders({
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            })
+        };
+
+        return this.http.request("post", url_, options_).pipe(_observableMergeMap((response_ : any) => {
+            return this.processCreate(response_);
+        })).pipe(_observableCatch((response_: any) => {
+            if (response_ instanceof HttpResponseBase) {
+                try {
+                    return this.processCreate(<any>response_);
+                } catch (e) {
+                    return <Observable<string>><any>_observableThrow(e);
+                }
+            } else
+                return <Observable<string>><any>_observableThrow(response_);
+        }));
+    }
+
+    protected processCreate(response: HttpResponseBase): Observable<string> {
+        const status = response.status;
+        const responseBlob =
+            response instanceof HttpResponse ? response.body :
+            (<any>response).error instanceof Blob ? (<any>response).error : undefined;
+
+        let _headers: any = {}; if (response.headers) { for (let key of response.headers.keys()) { _headers[key] = response.headers.get(key); }}
+        if (status === 200) {
+            return blobToText(responseBlob).pipe(_observableMergeMap(_responseText => {
+            let result200: any = null;
+            let resultData200 = _responseText === "" ? null : JSON.parse(_responseText, this.jsonParseReviver);
+            result200 = resultData200 !== undefined ? resultData200 : <any>null;
+            return _observableOf(result200);
+            }));
+        } else if (status !== 200 && status !== 204) {
+            return blobToText(responseBlob).pipe(_observableMergeMap(_responseText => {
+            return throwException("An unexpected server error occurred.", status, _responseText, _headers);
+            }));
+        }
+        return _observableOf<string>(<any>null);
     }
 }
 
@@ -717,13 +776,15 @@ export class WeatherForecastClient implements IWeatherForecastClient {
     }
 }
 
-export abstract class AuditableEntity implements IAuditableEntity {
-    created?: Date;
-    createdBy?: string | undefined;
-    lastModified?: Date | undefined;
-    lastModifiedBy?: string | undefined;
+export class PaginatedListOfPersonDto implements IPaginatedListOfPersonDto {
+    items?: PersonDto[];
+    pageNumber?: number;
+    totalPages?: number;
+    totalCount?: number;
+    hasPreviousPage?: boolean;
+    hasNextPage?: boolean;
 
-    constructor(data?: IAuditableEntity) {
+    constructor(data?: IPaginatedListOfPersonDto) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -734,186 +795,105 @@ export abstract class AuditableEntity implements IAuditableEntity {
 
     init(_data?: any) {
         if (_data) {
-            this.created = _data["created"] ? new Date(_data["created"].toString()) : <any>undefined;
-            this.createdBy = _data["createdBy"];
-            this.lastModified = _data["lastModified"] ? new Date(_data["lastModified"].toString()) : <any>undefined;
-            this.lastModifiedBy = _data["lastModifiedBy"];
+            if (Array.isArray(_data["items"])) {
+                this.items = [] as any;
+                for (let item of _data["items"])
+                    this.items!.push(PersonDto.fromJS(item));
+            }
+            this.pageNumber = _data["pageNumber"];
+            this.totalPages = _data["totalPages"];
+            this.totalCount = _data["totalCount"];
+            this.hasPreviousPage = _data["hasPreviousPage"];
+            this.hasNextPage = _data["hasNextPage"];
         }
     }
 
-    static fromJS(data: any): AuditableEntity {
+    static fromJS(data: any): PaginatedListOfPersonDto {
         data = typeof data === 'object' ? data : {};
-        throw new Error("The abstract class 'AuditableEntity' cannot be instantiated.");
+        let result = new PaginatedListOfPersonDto();
+        result.init(data);
+        return result;
     }
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["created"] = this.created ? this.created.toISOString() : <any>undefined;
-        data["createdBy"] = this.createdBy;
-        data["lastModified"] = this.lastModified ? this.lastModified.toISOString() : <any>undefined;
-        data["lastModifiedBy"] = this.lastModifiedBy;
+        if (Array.isArray(this.items)) {
+            data["items"] = [];
+            for (let item of this.items)
+                data["items"].push(item.toJSON());
+        }
+        data["pageNumber"] = this.pageNumber;
+        data["totalPages"] = this.totalPages;
+        data["totalCount"] = this.totalCount;
+        data["hasPreviousPage"] = this.hasPreviousPage;
+        data["hasNextPage"] = this.hasNextPage;
         return data; 
     }
 }
 
-export interface IAuditableEntity {
-    created?: Date;
-    createdBy?: string | undefined;
-    lastModified?: Date | undefined;
-    lastModifiedBy?: string | undefined;
+export interface IPaginatedListOfPersonDto {
+    items?: PersonDto[];
+    pageNumber?: number;
+    totalPages?: number;
+    totalCount?: number;
+    hasPreviousPage?: boolean;
+    hasNextPage?: boolean;
 }
 
-export class User extends AuditableEntity implements IUser {
-    userId?: string;
-    firstName?: string | undefined;
-    lastName?: string | undefined;
-    email?: string | undefined;
-    addresses?: Address[] | undefined;
-    domainEvents?: DomainEvent[] | undefined;
+export class PersonDto implements IPersonDto {
+    personId?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
 
-    constructor(data?: IUser) {
-        super(data);
+    constructor(data?: IPersonDto) {
+        if (data) {
+            for (var property in data) {
+                if (data.hasOwnProperty(property))
+                    (<any>this)[property] = (<any>data)[property];
+            }
+        }
     }
 
     init(_data?: any) {
-        super.init(_data);
         if (_data) {
-            this.userId = _data["userId"];
+            this.personId = _data["personId"];
             this.firstName = _data["firstName"];
             this.lastName = _data["lastName"];
             this.email = _data["email"];
-            if (Array.isArray(_data["addresses"])) {
-                this.addresses = [] as any;
-                for (let item of _data["addresses"])
-                    this.addresses!.push(Address.fromJS(item));
-            }
-            if (Array.isArray(_data["domainEvents"])) {
-                this.domainEvents = [] as any;
-                for (let item of _data["domainEvents"])
-                    this.domainEvents!.push(DomainEvent.fromJS(item));
-            }
         }
     }
 
-    static fromJS(data: any): User {
+    static fromJS(data: any): PersonDto {
         data = typeof data === 'object' ? data : {};
-        let result = new User();
+        let result = new PersonDto();
         result.init(data);
         return result;
     }
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["userId"] = this.userId;
+        data["personId"] = this.personId;
         data["firstName"] = this.firstName;
         data["lastName"] = this.lastName;
         data["email"] = this.email;
-        if (Array.isArray(this.addresses)) {
-            data["addresses"] = [];
-            for (let item of this.addresses)
-                data["addresses"].push(item.toJSON());
-        }
-        if (Array.isArray(this.domainEvents)) {
-            data["domainEvents"] = [];
-            for (let item of this.domainEvents)
-                data["domainEvents"].push(item.toJSON());
-        }
-        super.toJSON(data);
         return data; 
     }
 }
 
-export interface IUser extends IAuditableEntity {
-    userId?: string;
-    firstName?: string | undefined;
-    lastName?: string | undefined;
-    email?: string | undefined;
-    addresses?: Address[] | undefined;
-    domainEvents?: DomainEvent[] | undefined;
+export interface IPersonDto {
+    personId?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
 }
 
-export class Address extends AuditableEntity implements IAddress {
-    addressId?: string;
-    userId?: string;
-    country?: string | undefined;
-    city?: string | undefined;
-    postalCode?: string | undefined;
-    streetName?: string | undefined;
-    streetNumber?: number;
-    houseNumber?: number;
-    isPrimary?: boolean;
-    domainEvents?: DomainEvent[] | undefined;
+export class CreatePersonCommand implements ICreatePersonCommand {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
 
-    constructor(data?: IAddress) {
-        super(data);
-    }
-
-    init(_data?: any) {
-        super.init(_data);
-        if (_data) {
-            this.addressId = _data["addressId"];
-            this.userId = _data["userId"];
-            this.country = _data["country"];
-            this.city = _data["city"];
-            this.postalCode = _data["postalCode"];
-            this.streetName = _data["streetName"];
-            this.streetNumber = _data["streetNumber"];
-            this.houseNumber = _data["houseNumber"];
-            this.isPrimary = _data["isPrimary"];
-            if (Array.isArray(_data["domainEvents"])) {
-                this.domainEvents = [] as any;
-                for (let item of _data["domainEvents"])
-                    this.domainEvents!.push(DomainEvent.fromJS(item));
-            }
-        }
-    }
-
-    static fromJS(data: any): Address {
-        data = typeof data === 'object' ? data : {};
-        let result = new Address();
-        result.init(data);
-        return result;
-    }
-
-    toJSON(data?: any) {
-        data = typeof data === 'object' ? data : {};
-        data["addressId"] = this.addressId;
-        data["userId"] = this.userId;
-        data["country"] = this.country;
-        data["city"] = this.city;
-        data["postalCode"] = this.postalCode;
-        data["streetName"] = this.streetName;
-        data["streetNumber"] = this.streetNumber;
-        data["houseNumber"] = this.houseNumber;
-        data["isPrimary"] = this.isPrimary;
-        if (Array.isArray(this.domainEvents)) {
-            data["domainEvents"] = [];
-            for (let item of this.domainEvents)
-                data["domainEvents"].push(item.toJSON());
-        }
-        super.toJSON(data);
-        return data; 
-    }
-}
-
-export interface IAddress extends IAuditableEntity {
-    addressId?: string;
-    userId?: string;
-    country?: string | undefined;
-    city?: string | undefined;
-    postalCode?: string | undefined;
-    streetName?: string | undefined;
-    streetNumber?: number;
-    houseNumber?: number;
-    isPrimary?: boolean;
-    domainEvents?: DomainEvent[] | undefined;
-}
-
-export abstract class DomainEvent implements IDomainEvent {
-    isPublished?: boolean;
-    dateOccurred?: Date;
-
-    constructor(data?: IDomainEvent) {
+    constructor(data?: ICreatePersonCommand) {
         if (data) {
             for (var property in data) {
                 if (data.hasOwnProperty(property))
@@ -924,31 +904,36 @@ export abstract class DomainEvent implements IDomainEvent {
 
     init(_data?: any) {
         if (_data) {
-            this.isPublished = _data["isPublished"];
-            this.dateOccurred = _data["dateOccurred"] ? new Date(_data["dateOccurred"].toString()) : <any>undefined;
+            this.firstName = _data["firstName"];
+            this.lastName = _data["lastName"];
+            this.email = _data["email"];
         }
     }
 
-    static fromJS(data: any): DomainEvent {
+    static fromJS(data: any): CreatePersonCommand {
         data = typeof data === 'object' ? data : {};
-        throw new Error("The abstract class 'DomainEvent' cannot be instantiated.");
+        let result = new CreatePersonCommand();
+        result.init(data);
+        return result;
     }
 
     toJSON(data?: any) {
         data = typeof data === 'object' ? data : {};
-        data["isPublished"] = this.isPublished;
-        data["dateOccurred"] = this.dateOccurred ? this.dateOccurred.toISOString() : <any>undefined;
+        data["firstName"] = this.firstName;
+        data["lastName"] = this.lastName;
+        data["email"] = this.email;
         return data; 
     }
 }
 
-export interface IDomainEvent {
-    isPublished?: boolean;
-    dateOccurred?: Date;
+export interface ICreatePersonCommand {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
 }
 
 export class PaginatedListOfTodoItemBriefDto implements IPaginatedListOfTodoItemBriefDto {
-    items?: TodoItemBriefDto[] | undefined;
+    items?: TodoItemBriefDto[];
     pageNumber?: number;
     totalPages?: number;
     totalCount?: number;
@@ -1003,7 +988,7 @@ export class PaginatedListOfTodoItemBriefDto implements IPaginatedListOfTodoItem
 }
 
 export interface IPaginatedListOfTodoItemBriefDto {
-    items?: TodoItemBriefDto[] | undefined;
+    items?: TodoItemBriefDto[];
     pageNumber?: number;
     totalPages?: number;
     totalCount?: number;
@@ -1014,7 +999,7 @@ export interface IPaginatedListOfTodoItemBriefDto {
 export class TodoItemBriefDto implements ITodoItemBriefDto {
     id?: number;
     listId?: number;
-    title?: string | undefined;
+    title?: string;
     done?: boolean;
 
     constructor(data?: ITodoItemBriefDto) {
@@ -1055,13 +1040,13 @@ export class TodoItemBriefDto implements ITodoItemBriefDto {
 export interface ITodoItemBriefDto {
     id?: number;
     listId?: number;
-    title?: string | undefined;
+    title?: string;
     done?: boolean;
 }
 
 export class CreateTodoItemCommand implements ICreateTodoItemCommand {
     listId?: number;
-    title?: string | undefined;
+    title?: string;
 
     constructor(data?: ICreateTodoItemCommand) {
         if (data) {
@@ -1096,12 +1081,12 @@ export class CreateTodoItemCommand implements ICreateTodoItemCommand {
 
 export interface ICreateTodoItemCommand {
     listId?: number;
-    title?: string | undefined;
+    title?: string;
 }
 
 export class UpdateTodoItemCommand implements IUpdateTodoItemCommand {
     id?: number;
-    title?: string | undefined;
+    title?: string;
     done?: boolean;
 
     constructor(data?: IUpdateTodoItemCommand) {
@@ -1139,7 +1124,7 @@ export class UpdateTodoItemCommand implements IUpdateTodoItemCommand {
 
 export interface IUpdateTodoItemCommand {
     id?: number;
-    title?: string | undefined;
+    title?: string;
     done?: boolean;
 }
 
@@ -1147,7 +1132,7 @@ export class UpdateTodoItemDetailCommand implements IUpdateTodoItemDetailCommand
     id?: number;
     listId?: number;
     priority?: PriorityLevel;
-    note?: string | undefined;
+    note?: string;
 
     constructor(data?: IUpdateTodoItemDetailCommand) {
         if (data) {
@@ -1188,7 +1173,7 @@ export interface IUpdateTodoItemDetailCommand {
     id?: number;
     listId?: number;
     priority?: PriorityLevel;
-    note?: string | undefined;
+    note?: string;
 }
 
 export enum PriorityLevel {
@@ -1199,8 +1184,8 @@ export enum PriorityLevel {
 }
 
 export class TodosVm implements ITodosVm {
-    priorityLevels?: PriorityLevelDto[] | undefined;
-    lists?: TodoListDto[] | undefined;
+    priorityLevels?: PriorityLevelDto[];
+    lists?: TodoListDto[];
 
     constructor(data?: ITodosVm) {
         if (data) {
@@ -1250,13 +1235,13 @@ export class TodosVm implements ITodosVm {
 }
 
 export interface ITodosVm {
-    priorityLevels?: PriorityLevelDto[] | undefined;
-    lists?: TodoListDto[] | undefined;
+    priorityLevels?: PriorityLevelDto[];
+    lists?: TodoListDto[];
 }
 
 export class PriorityLevelDto implements IPriorityLevelDto {
     value?: number;
-    name?: string | undefined;
+    name?: string;
 
     constructor(data?: IPriorityLevelDto) {
         if (data) {
@@ -1291,14 +1276,14 @@ export class PriorityLevelDto implements IPriorityLevelDto {
 
 export interface IPriorityLevelDto {
     value?: number;
-    name?: string | undefined;
+    name?: string;
 }
 
 export class TodoListDto implements ITodoListDto {
     id?: number;
-    title?: string | undefined;
-    colour?: string | undefined;
-    items?: TodoItemDto[] | undefined;
+    title?: string;
+    colour?: string;
+    items?: TodoItemDto[];
 
     constructor(data?: ITodoListDto) {
         if (data) {
@@ -1345,18 +1330,18 @@ export class TodoListDto implements ITodoListDto {
 
 export interface ITodoListDto {
     id?: number;
-    title?: string | undefined;
-    colour?: string | undefined;
-    items?: TodoItemDto[] | undefined;
+    title?: string;
+    colour?: string;
+    items?: TodoItemDto[];
 }
 
 export class TodoItemDto implements ITodoItemDto {
     id?: number;
     listId?: number;
-    title?: string | undefined;
+    title?: string;
     done?: boolean;
     priority?: number;
-    note?: string | undefined;
+    note?: string;
 
     constructor(data?: ITodoItemDto) {
         if (data) {
@@ -1400,14 +1385,14 @@ export class TodoItemDto implements ITodoItemDto {
 export interface ITodoItemDto {
     id?: number;
     listId?: number;
-    title?: string | undefined;
+    title?: string;
     done?: boolean;
     priority?: number;
-    note?: string | undefined;
+    note?: string;
 }
 
 export class CreateTodoListCommand implements ICreateTodoListCommand {
-    title?: string | undefined;
+    title?: string;
 
     constructor(data?: ICreateTodoListCommand) {
         if (data) {
@@ -1439,12 +1424,13 @@ export class CreateTodoListCommand implements ICreateTodoListCommand {
 }
 
 export interface ICreateTodoListCommand {
-    title?: string | undefined;
+    title?: string;
 }
 
 export class UpdateTodoListCommand implements IUpdateTodoListCommand {
     id?: number;
-    title?: string | undefined;
+    title?: string;
+    personIds?: string[];
 
     constructor(data?: IUpdateTodoListCommand) {
         if (data) {
@@ -1459,6 +1445,11 @@ export class UpdateTodoListCommand implements IUpdateTodoListCommand {
         if (_data) {
             this.id = _data["id"];
             this.title = _data["title"];
+            if (Array.isArray(_data["personIds"])) {
+                this.personIds = [] as any;
+                for (let item of _data["personIds"])
+                    this.personIds!.push(item);
+            }
         }
     }
 
@@ -1473,20 +1464,26 @@ export class UpdateTodoListCommand implements IUpdateTodoListCommand {
         data = typeof data === 'object' ? data : {};
         data["id"] = this.id;
         data["title"] = this.title;
+        if (Array.isArray(this.personIds)) {
+            data["personIds"] = [];
+            for (let item of this.personIds)
+                data["personIds"].push(item);
+        }
         return data; 
     }
 }
 
 export interface IUpdateTodoListCommand {
     id?: number;
-    title?: string | undefined;
+    title?: string;
+    personIds?: string[];
 }
 
 export class WeatherForecast implements IWeatherForecast {
     date?: Date;
     temperatureC?: number;
     temperatureF?: number;
-    summary?: string | undefined;
+    summary?: string;
 
     constructor(data?: IWeatherForecast) {
         if (data) {
@@ -1527,7 +1524,7 @@ export interface IWeatherForecast {
     date?: Date;
     temperatureC?: number;
     temperatureF?: number;
-    summary?: string | undefined;
+    summary?: string;
 }
 
 export interface FileResponse {

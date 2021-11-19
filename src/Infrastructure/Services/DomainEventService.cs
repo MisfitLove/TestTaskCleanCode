@@ -1,10 +1,10 @@
 ﻿using CleanArchitecture.Application.Common.Interfaces;
 using CleanArchitecture.Application.Common.Models;
-using CleanArchitecture.Domain.Common;
 using MediatR;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading.Tasks;
+using CleanArchitecture.Domain.Common;
 
 namespace CleanArchitecture.Infrastructure.Services
 {
